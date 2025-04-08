@@ -4,8 +4,6 @@
 #define UNIQUE_SUBARTNET
 
 // Define configuration constants
-//#define NUM_LEDS_PER_STRIP 5 // Maximum number of LEDs per strip
-// #define NUMSTRIPS 4 //  Max Number of LED strips
 #define NB_CHANNEL_PER_LED 3  // Number of channels per LED (3 for RGB, 4 for RGBW)
 #define COLOR_GRB // Define color order (Green-Red-Blue)
 
@@ -32,17 +30,14 @@ Preferences preferences;
 
 
 //Configuration par défault
-int numledsoutput = 100;//NUM_LEDS_PER_STRIP;
-int numoutput = 4;//NUMSTRIPS;
+int numledsoutput = 100;
+int numoutput = 4;=
 int startuniverse = 0;
 int suffix_ipv4 = 100;
-String nodename = "Artnet Node ESP32";
+String nodename = "KSS led strip";
 
-
-
-int pins[4] = {15,12,14,4};//,27,26};
+int pins[4] = {15,12,14,4};
 bool ledCycleEnabled = false;
-bool isCycleRunning = false;  // Add this flag to track if the cycle is running
 
 
 
@@ -56,8 +51,6 @@ I2SClocklessLedDriver driver;
 void displayfunction(void *param) {
     subArtnet *subartnet = (subArtnet *)param;
     driver.showPixels(NO_WAIT, subartnet->data);
-    // Serial.print("Len : ");
-    // Serial.println(subartnet->len);
 }
 
 
@@ -98,34 +91,34 @@ void handleRoot() {
 // Fonction appelé par le serveur WEB losqu'une nouvelle conbfiguration est entrée par l'utilisateur
 void handleConfig() {
 
-    if (server.method() == HTTP_POST) {
+  if (server.method() == HTTP_POST) {
 
-      // récuperer les arguments envoyé dans la requette
-        if (server.hasArg("numledsoutput")) numledsoutput = server.arg("numledsoutput").toInt();
-        if (server.hasArg("numoutput")) numoutput = server.arg("numoutput").toInt();
-        if (server.hasArg("startuniverse")) startuniverse = server.arg("startuniverse").toInt();
-        if (server.hasArg("nodename")) nodename = server.arg("nodename");
-        if (server.hasArg("suffix_ipv4")) suffix_ipv4 = server.arg("suffix_ipv4").toInt();
-        ledCycleEnabled = server.hasArg("ledCycleEnabled"); // Process new checkbox value
+    // récuperer les arguments envoyé dans la requette
+      if (server.hasArg("numledsoutput")) numledsoutput = server.arg("numledsoutput").toInt();
+      if (server.hasArg("numoutput")) numoutput = server.arg("numoutput").toInt();
+      if (server.hasArg("startuniverse")) startuniverse = server.arg("startuniverse").toInt();
+      if (server.hasArg("nodename")) nodename = server.arg("nodename");
+      if (server.hasArg("suffix_ipv4")) suffix_ipv4 = server.arg("suffix_ipv4").toInt();
+      ledCycleEnabled = server.hasArg("ledCycleEnabled"); // Process new checkbox value
 
-        // Stocker les paramètres en ROM
-        preferences.begin("esp32config", false);
-          preferences.putInt("numledsoutput", numledsoutput);
-          preferences.putInt("numoutput", numoutput);
-          preferences.putInt("startuniverse", startuniverse);
-          if(suffix_ipv4 <256 && suffix_ipv4 >= 0)
-            preferences.putInt("suffix_ipv4", suffix_ipv4);
-          preferences.putString("nodename", nodename);
-        preferences.end();
+      // Stocker les paramètres en ROM
+      preferences.begin("esp32config", false);
+        preferences.putInt("numledsoutput", numledsoutput);
+        preferences.putInt("numoutput", numoutput);
+        preferences.putInt("startuniverse", startuniverse);
+        if(suffix_ipv4 <256 && suffix_ipv4 >= 0)
+          preferences.putInt("suffix_ipv4", suffix_ipv4);
+        preferences.putString("nodename", nodename);
+      preferences.end();
 
-        server.sendHeader("Location", "/", true);
-        server.send(302, "text/plain", "");
+      server.sendHeader("Location", "/", true);
+      server.send(302, "text/plain", "");
 
-        // Reset l'ESP pour appliquer les paramètres
-        if (!ledCycleEnabled){
-          ESP.restart();
-        }
-    }
+      // Reset l'ESP pour appliquer les paramètres
+      if (!ledCycleEnabled){
+        ESP.restart();
+      }
+  }
 }
 
 
@@ -181,7 +174,7 @@ void setupEthernet() {
 void setup() {
     Serial.begin(115200);
 
-    Serial.print("Booting BKB'S leds\n");
+    Serial.print("Booting KSS strip led\n");
 
     // Récupérer les paramètres strockés en ROM
     preferences.begin("esp32config", true);
@@ -235,16 +228,19 @@ void loop() {
 void cycleLEDs() {
 
   // initialisation des instances nécéssaires pour le test des leds
-  static uint8_t currentColor = 0;  // 0 = Red, 1 = Green, 2 = Blue
+  static uint8_t currentColor = 0;  // 0 = Red, 1 = Green, 2 = Blue ...
   static unsigned long lastUpdate = 0;
   static const unsigned long cycleDelay = 1000;  // Change color every 1 second
-  static Adafruit_NeoPixel strip1(numledsoutput, pins[0], NEO_GRB + NEO_KHZ800);
-  static Adafruit_NeoPixel strip2(numledsoutput, pins[1], NEO_GRB + NEO_KHZ800);
-  static Adafruit_NeoPixel strip3(numledsoutput, pins[2], NEO_GRB + NEO_KHZ800);
-  static Adafruit_NeoPixel strip4(numledsoutput, pins[3], NEO_GRB + NEO_KHZ800);
-  static Adafruit_NeoPixel* strips[4] = { &strip1, &strip2, &strip3, &strip4 };
+  static Adafruit_NeoPixel* strips[4];
 
-
+  static bool first = true;
+  if(first)
+  {
+    first = false;
+    for (int i = 0; i < numoutput; i++) {
+      strips[i] = new Adafruit_NeoPixel(numledsoutput, pins[i], NEO_GRB + NEO_KHZ800);
+    }
+  }
 
   if (millis() - lastUpdate >= cycleDelay) {
       lastUpdate = millis();
